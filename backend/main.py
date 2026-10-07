@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ from pydantic import BaseModel, StringConstraints
 from llm import Scenario, generate_scenario
 from llm_errors import LLMError, llm_error_handler
 
-DB_PATH = Path(__file__).parent / "scenarios.db"
+DB_PATH = Path(os.getenv("DB_PATH", Path(__file__).parent / "scenarios.db"))
 
 
 def get_db():
