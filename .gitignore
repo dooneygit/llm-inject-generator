@@ -6,3 +6,5 @@ notes.md
 
 # Pycache
 __pycache__
+# SQLite
+*.db

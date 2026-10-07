@@ -2,9 +2,10 @@ from typing import Literal
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import HTTPException
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
+
+from llm_errors import LLMError, translate_anthropic_errors
 
 load_dotenv()
 
@@ -51,7 +52,7 @@ No real people or locations.
 
 
 def generate_scenario(exercise: str) -> Scenario:
-    try:
+    with translate_anthropic_errors():
         message = client.messages.parse(
             model="claude-haiku-4-5-20251001",
             max_tokens=1000,
@@ -59,21 +60,11 @@ def generate_scenario(exercise: str) -> Scenario:
             messages=[{"role": "user", "content": exercise}],
             output_format=Scenario,
         )
-    except anthropic.APITimeoutError:
-        raise HTTPException(504, "Scenario generation timed out")
-    except anthropic.RateLimitError:
-        raise HTTPException(503, "Scenario service is busy, try again later")
-    except anthropic.BadRequestError:
-        raise HTTPException(400, "Exercise description could not be processed")
-    except (anthropic.APIStatusError, anthropic.APIConnectionError):
-        raise HTTPException(502, "Upstream LLM service error")
-    except ValidationError:
-        raise HTTPException(502, "LLM returned an invalid scenario")
 
     if message.stop_reason == "refusal":
-        raise HTTPException(422, "Exercise description was refused")
+        raise LLMError(422, "Exercise description was refused")
     if message.stop_reason == "max_tokens" or message.parsed_output is None:
-        raise HTTPException(502, "LLM returned an incomplete scenario")
+        raise LLMError(502, "LLM returned an incomplete scenario")
 
     return message.parsed_output
 
